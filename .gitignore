@@ -2,3 +2,5 @@ pinocchio/
 __pycache__/
 *.pyc
 .vscode/
+urdf_files_dataset/
+mujoco_menagerie/
