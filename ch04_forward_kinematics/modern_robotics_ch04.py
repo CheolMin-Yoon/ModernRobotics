@@ -113,7 +113,7 @@ Blist_body = [Vec2se3(B) for B in Blist_body_vec]
 
 from scipy.linalg import expm
 
-def body_frame_fk(Blist_body, thetalist):
+def body_frame_fk(Blist_body, thetalist, M=M):
   
     T_body = np.copy(M)
     for B, theta in zip(Blist_body, thetalist):
@@ -127,7 +127,7 @@ def body_frame_fk(Blist_body, thetalist):
 # 입력: 관절 스크류 Slist (nx1), 관절 값 thetalist (nx1)
 # 출력: EE pose
 
-def fixed_frame_fk(Slist_space, thetalist):
+def fixed_frame_fk(Slist_space, thetalist, M=M):
    
     T_space = np.eye(4)
     for S, theta in zip(Slist_space, thetalist):
@@ -137,7 +137,8 @@ def fixed_frame_fk(Slist_space, thetalist):
     return T_space
 
 
-T_body = body_frame_fk(Blist_body, thetalist)
-T_space = fixed_frame_fk(Slist_space, thetalist)
-print(T_body)
-print(T_space)
+if __name__ == '__main__':
+    T_body = body_frame_fk(Blist_body, thetalist)
+    T_space = fixed_frame_fk(Slist_space, thetalist)
+    print(T_body)
+    print(T_space)

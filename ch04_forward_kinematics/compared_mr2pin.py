@@ -9,7 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 import numpy as np
 import pinocchio as pin
-from scipy.linalg import expm
+from ch04_forward_kinematics.modern_robotics_ch04 import body_frame_fk, fixed_frame_fk
 from ch03_rigid_body_motion.modern_robotics_ch03 import (
     Adjoint, Vec2so3, Vec2se3, TransInv
 )
@@ -59,21 +59,6 @@ M_inv = TransInv(M)
 Ad_Minv = Adjoint(M_inv)
 Blist_body_vec = [Ad_Minv @ S for S in Slist_space_vec]
 Blist_body = [Vec2se3(B) for B in Blist_body_vec]
-
-
-# ── FK 함수 (PoE) ──
-def body_frame_fk(Blist, thetalist, M):
-    T = np.copy(M)
-    for B, theta in zip(Blist, thetalist):
-        T = T @ expm(B * theta)
-    return T
-
-def fixed_frame_fk(Slist, thetalist, M):
-    T = np.eye(4)
-    for S, theta in zip(Slist, thetalist):
-        T = T @ expm(S * theta)
-    T = T @ M
-    return T
 
 
 # ── 비교 함수 ──
