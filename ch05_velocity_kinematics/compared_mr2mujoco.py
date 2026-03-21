@@ -10,12 +10,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 import numpy as np
 import mujoco
-from ch03_rigid_body_motion.modern_robotics_ch03 import (
-    Adjoint, Vec2se3, TransInv
-)
-from ch05_velocity_kinematics.modern_robotics_ch05 import (
-    BodyJacobian, SpaceJacobian
-)
+from ch03_rigid_body_motion.modern_robotics_ch03 import *
+from ch05_velocity_kinematics.modern_robotics_ch05 import *
 
 np.set_printoptions(precision=6, suppress=True)
 
