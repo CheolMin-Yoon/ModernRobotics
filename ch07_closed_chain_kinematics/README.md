@@ -6,7 +6,7 @@
 
 | 파일 | 설명 |
 |------|------|
-| `modern_robotics_ch07.py` | 스켈레톤 (구현 예정) |
+| `modern_robotics_ch07.py` | 폐연쇄 기구학 함수 |
 | `cassie_test.py` | MuJoCo로 Cassie 로드, 폐연쇄 구속 분석, 뷰어 스폰 |
 
 ## Cassie 폐연쇄 구조
@@ -26,12 +26,20 @@
 - 왼쪽 다리 폐연쇄 body 위치
 - 액추에이터 목록
 
+## 폐연쇄 DOF 분석 이론
+
+Grübler 공식: `m = 6(N - 1 - J) + Σf_i`
+
+`kinematics_pick_and_place/grasp_analysis.py`에서 그리퍼 그래스프 분석에도 동일 이론 적용.
+
 ## 실행
 
 ```bash
+conda activate mr
+
 # 모델 정보 출력
 python ch07_closed_chain_kinematics/cassie_test.py
 
-# MuJoCo 뷰어로 Cassie 스폰 (시뮬레이션)
+# MuJoCo 뷰어로 Cassie 스폰
 python ch07_closed_chain_kinematics/cassie_test.py --view
 ```

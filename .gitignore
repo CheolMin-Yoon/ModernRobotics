@@ -1,9 +1,36 @@
-pinocchio/
-__pycache__/
-*.pyc
-.vscode/
+# 외부 데이터셋 (git clone으로 별도 관리)
 urdf_files_dataset/
 mujoco_menagerie/
-serl_franka_controllers/
-pyolp_robotics/
-robot_hand/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# 가상환경
+pinocchio/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 로그 / 임시
+*.log
+*.tmp

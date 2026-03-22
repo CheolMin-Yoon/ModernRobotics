@@ -4,10 +4,10 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 import numpy as np
 import matplotlib.pyplot as plt
-from ch02_configuration_space.topology import S1, visualize_T2_from_S1
-from ch02_configuration_space.Explicit_Representation import explicit_representation_S1
-from ch02_configuration_space.Implicit_Representation import implicit_representation_S1
-from ch02_configuration_space.constraints import g_holonomic, check_pfaffian_constraint
+from ch02_configuration_space.topology import *
+from ch02_configuration_space.Explicit_Representation import *
+from ch02_configuration_space.Implicit_Representation import *
+from ch02_configuration_space.constraints import *
 
 def gruebler_formula(m, N, J, f_i):
     """

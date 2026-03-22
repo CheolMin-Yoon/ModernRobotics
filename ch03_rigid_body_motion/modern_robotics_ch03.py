@@ -80,10 +80,22 @@ def MatrixExp3(hat_omega, theta):
 # 입력: R 3x3
 # 출력: 행렬로그 so3mat 3x3
 def MatrixLog3(R):
-    theta = np.arccos((np.trace(R) - 1) / 2.0)
-    so3mat = theta / (2 * np.sin(theta)) * (R - np.array(R).T)
+    cos_theta = np.clip((np.trace(R) - 1) / 2.0, -1, 1)
+    theta = np.arccos(cos_theta)
 
-    return so3mat
+    if theta < 1e-6:
+        # R ≈ I → so3mat ≈ 0
+        return np.zeros((3, 3))
+    elif abs(theta - np.pi) < 1e-6:
+        # theta ≈ π → 특이점 처리
+        # R + I의 열 중 norm이 가장 큰 열을 사용
+        RpI = R + np.eye(3)
+        col = np.argmax(np.linalg.norm(RpI, axis=0))
+        w = RpI[:, col] / np.linalg.norm(RpI[:, col])
+        return Vec2so3(w * theta)
+    else:
+        so3mat = theta / (2 * np.sin(theta)) * (R - np.array(R).T)
+        return so3mat
 
 # 3.7 회전행렬 R -> SO(3), 위치 벡터 p -> R^3로 동차 변환행렬 T를 계산
 # 입력: R (3x3), p(3x1)
@@ -221,20 +233,33 @@ def MatrixLog(T):
     R, p = Trans2Rp(T)
     p = p.reshape(3, 1)
 
-    if np.linalg.norm(R - np.eye(3)) < 1e-6:
+    theta = np.arccos(np.clip((np.trace(R) - 1) / 2.0, -1, 1))
+
+    if theta < 1e-6:
+        # R ≈ I: 순수 병진
         se3mat = np.block([[np.zeros((3, 3)), p],
                            [np.zeros((1, 3)), 0]])
     else:
-        theta = np.arccos(np.clip((np.trace(R) - 1) / 2.0, -1, 1))
-        # MatrixLog3 함수 활용
         so3mat = MatrixLog3(R)
         w_mat = so3mat / theta
         I = np.eye(3)
 
-        G_inv = (1.0/theta) * I - 0.5 * w_mat + (1.0/theta - 0.5 / np.tan(theta/2.0)) * np.dot(w_mat, w_mat)
-        v = np.dot(G_inv, p)
+        if theta < 1e-3:
+            # 작은 theta: G_inv 테일러 근사
+            # G = theta*I + (1-cos)* [w] + (theta-sin)*[w]^2
+            # G ≈ theta*I  →  G_inv ≈ (1/theta)*I
+            # 2차 보정: G_inv ≈ (1/theta)*I - 0.5*[w] + (1/12)*theta*[w]^2
+            G_inv = (1.0 / theta) * I \
+                    - 0.5 * w_mat \
+                    + (theta / 12.0) * np.dot(w_mat, w_mat)
+        else:
+            G_inv = (1.0 / theta) * I \
+                    - 0.5 * w_mat \
+                    + (1.0 / theta - 0.5 / np.tan(theta / 2.0)) * np.dot(w_mat, w_mat)
+        # v̂ = G_θ^{-1} @ p, se3mat의 v 부분 = θ * v̂
+        v = theta * np.dot(G_inv, p)
 
-        se3mat = np.block([[so3mat,   v],
-                          [np.zeros((1, 3)), 0]])
+        se3mat = np.block([[so3mat, v],
+                           [np.zeros((1, 3)), 0]])
 
     return se3mat

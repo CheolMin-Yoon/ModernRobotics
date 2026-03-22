@@ -30,7 +30,7 @@ H2 = 95
 import numpy as np
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from ch03_rigid_body_motion.modern_robotics_ch03 import Adjoint, Vec2so3, Vec2se3, TransInv
+from ch03_rigid_body_motion.modern_robotics_ch03 import *
 
 R = np.array([[-1, 0, 0],
               [ 0, 0, 1],

@@ -13,13 +13,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import numpy as np
 import mujoco
 from ch08_dynamics.modern_robotics_ch08 import *
-from ch04_forward_kinematics.modern_robotics_ch04 import thetalist
+from params.ur5e import *  # noqa: F403
 
 np.set_printoptions(precision=6, suppress=True)
 
 # ── MuJoCo 모델 로드 ──
-SCENE_XML = os.path.join(os.path.dirname(__file__), '..',
-                         'mujoco_menagerie/universal_robots_ur5e/scene.xml')
+SCENE_XML = MUJOCO_SCENE  # from params.ur5e
 
 mjmodel = mujoco.MjModel.from_xml_path(SCENE_XML)
 mjdata = mujoco.MjData(mjmodel)
@@ -146,28 +145,50 @@ test_configs = {
 
 for name, q in test_configs.items():
     M_mj = mujoco_mass_matrix(mjmodel, mjdata, q)
+    M_mr = MassMatrix(q, Mlist, Glist, Slist_space_vec)
     print(f"\n  [{name}]")
-    print(f"  MuJoCo M(q):\n{M_mj}")
+    compare(f"{name} M(q)", M_mr, M_mj)
 
 # ── 3. 역동역학 토크 (RNEA) ──
-print("\n[3] 역동역학 토크 (mj_inverse)")
+print("\n[3] 역동역학 토크 (RNEA)")
 q_test = np.array(thetalist, dtype=float)
 dq_test = np.array([0.1, 0.2, -0.1, 0.05, 0.3, -0.2])
 ddq_test = np.array([0.01, 0.02, -0.01, 0.005, 0.03, -0.02])
 
+g_vec = np.array([0, 0, -9.81])
+
 tau_mj = mujoco_inverse_dynamics(mjmodel, mjdata, q_test, dq_test, ddq_test)
+tau_mr = RNEA(q_test, dq_test, ddq_test, g_vec, np.zeros(6),
+              Mlist, Glist, Slist_space_vec)
+print(f"  MR    tau: {tau_mr}")
 print(f"  MuJoCo tau: {tau_mj}")
+compare("RNEA tau", tau_mr, tau_mj)
 
 # ── 4. 중력 토크 ──
 print("\n[4] 중력 토크 g(q)")
 for name, q in test_configs.items():
     g_mj = mujoco_gravity_torque(mjmodel, mjdata, q)
-    print(f"  [{name}] g(q): {g_mj}")
+    g_mr = GravityForces(q, g_vec, Mlist, Glist, Slist_space_vec)
+    print(f"\n  [{name}]")
+    compare(f"{name} g(q)", g_mr, g_mj)
 
 # ── 5. 코리올리 + 중력 ──
 print("\n[5] 비선형 효과 h(q,dq) = C*dq + g")
 nle_mj = mujoco_nle(mjmodel, mjdata, q_test, dq_test)
-print(f"  MuJoCo nle: {nle_mj}")
+c_mr = VelQuadraticForces(q_test, dq_test, Mlist, Glist, Slist_space_vec)
+g_mr = GravityForces(q_test, g_vec, Mlist, Glist, Slist_space_vec)
+h_mr = c_mr + g_mr
+print(f"  MR    h: {h_mr}")
+print(f"  MuJoCo h: {nle_mj}")
+compare("h(q,dq)", h_mr, nle_mj)
+
+# ── 6. 분해 검증: tau = M*ddq + h ──
+print("\n[6] 분해 검증: tau = M*ddq + c + g")
+M_mr = MassMatrix(q_test, Mlist, Glist, Slist_space_vec)
+tau_decomp = M_mr @ ddq_test + h_mr
+print(f"  M*ddq + h: {tau_decomp}")
+print(f"  RNEA tau:  {tau_mr}")
+compare("decomposition", tau_decomp, tau_mr, tol=1e-8)
 
 print("\n" + "=" * 60)
 print("  done")

@@ -8,7 +8,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 import numpy as np
 import matplotlib.pyplot as plt
-from ch02_configuration_space.topology import S1
+from ch02_configuration_space.topology import *
 
 def explicit_representation_S1():
     """S1(원)을 각도 파라미터로 명시적 표현"""

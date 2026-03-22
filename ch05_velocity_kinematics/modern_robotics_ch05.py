@@ -9,11 +9,8 @@ import os, sys
 from scipy.linalg import expm
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from ch03_rigid_body_motion.modern_robotics_ch03 import Adjoint, Vec2se3, se32Vec, TransInv
-from ch04_forward_kinematics.modern_robotics_ch04 import (
-    Slist_space_vec, Blist_body_vec, Slist_space, Blist_body,
-    thetalist, M
-)
+from ch03_rigid_body_motion.modern_robotics_ch03 import *
+from ch04_forward_kinematics.modern_robotics_ch04 import *
 
 
 # 5.1 물체 자코비안 J_b 계산
@@ -75,7 +72,7 @@ if __name__ == '__main__':
     print(J_s)
 
     # 검증: J_s = [Ad_Tsb] * J_b
-    from ch04_forward_kinematics.modern_robotics_ch04 import body_frame_fk
+    from ch04_forward_kinematics.modern_robotics_ch04 import *
     T_sb = body_frame_fk(Blist_body, thetalist)
     Ad_Tsb = Adjoint(T_sb)
     J_s_from_Jb = Ad_Tsb @ J_b
