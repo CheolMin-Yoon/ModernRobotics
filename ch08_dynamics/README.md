@@ -25,10 +25,20 @@
 | 파일 | 설명 |
 |------|------|
 | `modern_robotics_ch08.py` | 동역학 함수 구현 |
+| `modern_robotics_ch08_torch.py` | PyTorch 버전 (autograd 동역학 미분, 정동역학 포함) |
 | `modern_robotics_ch08.ipynb` | 노트북 |
 | `compared_mr2pin.py` | Pinocchio (UR5e URDF) 비교 |
 | `compared_mr2mujoco.py` | MuJoCo (UR5e scene) 비교 |
 | `FAIL_analysis.md` | 현재 검증 FAIL 항목 분석 |
+
+## PyTorch 버전
+
+`modern_robotics_ch08_torch.py` — RNEA/CRBA + autograd 동역학 미분.
+
+- `RNEA`, `MassMatrix`, `MassMatrixCRBA`, `VelQuadraticForces`, `GravityForces`: numpy 원본과 동일 알고리즘
+- `forward_dynamics`: 정동역학 ddθ = M⁻¹(τ - c - g)
+- `inverse_dynamics_autograd`: M@ddθ + c + g 직접 계산 (RNEA 검증용)
+- autograd로 ∂τ/∂θ 자동 계산 가능 → 시스템 식별, 궤적 최적화에 활용
 
 ## 검증 현황
 
@@ -47,6 +57,7 @@ FAIL 원인 및 상세 분석 → `FAIL_analysis.md` 참조
 ```bash
 conda activate mr
 python ch08_dynamics/modern_robotics_ch08.py
+python ch08_dynamics/modern_robotics_ch08_torch.py
 python ch08_dynamics/compared_mr2pin.py
 python ch08_dynamics/compared_mr2mujoco.py
 ```

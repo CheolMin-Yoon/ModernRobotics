@@ -22,15 +22,28 @@ urdf_files_dataset/             # URDF 파일 모음 (git clone, .gitignore)
 
 ## 챕터별 구현 현황
 
-| 챕터 | 주제 | 검증 |
-|------|------|------|
-| ch02 | Configuration Space, Grübler, 제약조건 | - |
-| ch03 | SO(3)/SE(3), exp/log, Adjoint | ✓ Pinocchio PASS |
-| ch04 | PoE 순운동학 | ✓ Pinocchio, MuJoCo PASS |
-| ch05 | 물체/공간 자코비안 | ✓ Pinocchio, MuJoCo PASS |
-| ch06 | 수치 역기구학 | ✓ Pinocchio, MuJoCo PASS |
-| ch07 | 폐연쇄 기구학, 파지 해석 | ✓ Pinocchio, 수학적 검증 PASS |
-| ch08 | RNEA, 질량 행렬, 동역학 | ✗ FAIL (분석 중, `ch08_dynamics/FAIL_analysis.md`) |
+| 챕터 | 주제 | 검증 | PyTorch |
+|------|------|------|---------|
+| ch02 | Configuration Space, Grübler, 제약조건 | - | - |
+| ch03 | SO(3)/SE(3), exp/log, Adjoint | ✓ Pinocchio PASS | ✓ autograd 미분 |
+| ch04 | PoE 순운동학 | ✓ Pinocchio, MuJoCo PASS | ✓ FK의 ∂p/∂θ |
+| ch05 | 물체/공간 자코비안 | ✓ Pinocchio, MuJoCo PASS | ✓ autograd 자코비안 |
+| ch06 | 수치 역기구학 | ✓ Pinocchio, MuJoCo PASS | ✓ autograd IK (경사 하강법) |
+| ch07 | 폐연쇄 기구학, 파지 해석 | ✓ Pinocchio, 수학적 검증 PASS | ✓ 접촉점 최적화 |
+| ch08 | RNEA, 질량 행렬, 동역학 | ✗ FAIL (분석 중, `ch08_dynamics/FAIL_analysis.md`) | ✓ ∂τ/∂θ, 정동역학 |
+
+## PyTorch 버전
+
+각 챕터에 `*_torch.py` 파일로 PyTorch 버전을 제공한다. numpy 원본과 동일한 API를 유지하면서 `torch.autograd` 자동 미분을 지원한다.
+
+| 챕터 | autograd 활용 |
+|------|---------------|
+| ch03 | 회전 행렬의 θ 미분 |
+| ch04 | FK 위치의 θ 미분 (∂p/∂θ) |
+| ch05 | 해석적 자코비안 없이 FK 미분만으로 자코비안 계산 |
+| ch06 | `IKinAutograd` — FK loss 기반 경사 하강법 IK |
+| ch07 | 파지 품질(σ_min/σ_max) 최대화 접촉점 위치 최적화 |
+| ch08 | ∂τ/∂θ 자동 계산, 정동역학 ddθ = M⁻¹(τ-c-g) |
 
 ## 비교 검증 체계
 
@@ -63,6 +76,7 @@ urdf_files_dataset/             # URDF 파일 모음 (git clone, .gitignore)
 conda create -n mr python=3.13
 conda activate mr
 pip install numpy scipy pinocchio mujoco sympy osqp matplotlib
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 ```
 
 외부 데이터 (프로젝트 루트에 위치):
@@ -82,6 +96,14 @@ python ch03_rigid_body_motion/modern_robotics_ch03.py
 python ch04_forward_kinematics/modern_robotics_ch04.py
 python ch05_velocity_kinematics/modern_robotics_ch05.py
 python ch08_dynamics/modern_robotics_ch08.py
+
+# PyTorch 버전
+python ch03_rigid_body_motion/modern_robotics_ch03_torch.py
+python ch04_forward_kinematics/modern_robotics_ch04_torch.py
+python ch05_velocity_kinematics/modern_robotics_ch05_torch.py
+python ch06_inverse_kinematics/modern_robotics_ch06_torch.py
+python ch07_closed_chain_kinematics/modern_robotics_ch07_torch.py
+python ch08_dynamics/modern_robotics_ch08_torch.py
 
 # 비교 검증
 python ch03_rigid_body_motion/compared_mr2pin.py

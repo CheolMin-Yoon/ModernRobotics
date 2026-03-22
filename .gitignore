@@ -34,3 +34,7 @@ Thumbs.db
 # 로그 / 임시
 *.log
 *.tmp
+
+# CUDA installer
+cuda-*.deb
+cuda-*pin*

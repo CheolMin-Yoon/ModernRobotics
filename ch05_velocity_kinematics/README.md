@@ -16,8 +16,17 @@
 | 파일 | 설명 |
 |------|------|
 | `modern_robotics_ch05.py` | 자코비안 구현 |
+| `modern_robotics_ch05_torch.py` | PyTorch 버전 (autograd 자코비안 포함) |
 | `compared_mr2pin.py` | Pinocchio (UR5 URDF) 비교 |
 | `compared_mr2mujoco.py` | MuJoCo (UR5e scene) 비교 |
+
+## PyTorch 버전
+
+`modern_robotics_ch05_torch.py` — 자코비안 + autograd 기반 자코비안.
+
+- `BodyJacobian`, `SpaceJacobian`: 해석적 자코비안 (numpy 원본과 일치 검증 완료)
+- `autograd_body_jacobian`: FK의 θ에 대한 자동 미분으로 위치 자코비안 계산 (해석적 자코비안 없이)
+- `autograd_full_jacobian`: T 전체 원소에 대한 θ 미분 (16×n)
 
 ## 검증
 
@@ -29,6 +38,7 @@
 ```bash
 conda activate mr
 python ch05_velocity_kinematics/modern_robotics_ch05.py
+python ch05_velocity_kinematics/modern_robotics_ch05_torch.py
 python ch05_velocity_kinematics/compared_mr2pin.py
 python ch05_velocity_kinematics/compared_mr2mujoco.py
 ```

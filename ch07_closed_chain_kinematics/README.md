@@ -19,8 +19,16 @@
 | 파일 | 설명 |
 |------|------|
 | `modern_robotics_ch07.py` | 폐연쇄 기구학 함수 구현 |
+| `modern_robotics_ch07_torch.py` | PyTorch 버전 (autograd 접촉점 최적화 포함) |
 | `compared_mr2pin.py` | Pinocchio SE(3)/skew 기반 비교 검증 |
 | `compared_mr2mujoco.py` | 수학적 검증 (해석적 기대값 비교) |
+
+## PyTorch 버전
+
+`modern_robotics_ch07_torch.py` — 파지 해석 + autograd 접촉점 최적화.
+
+- 기존 함수 모두 torch 버전으로 구현 (numpy 교차 검증 완료)
+- `optimize_contact_positions`: autograd로 파지 품질(σ_min/σ_max)을 최대화하는 접촉점 위치 최적화
 
 ## 검증
 
@@ -44,6 +52,7 @@ Pinocchio 비교 (`compared_mr2pin.py`):
 ```bash
 conda activate mr
 python ch07_closed_chain_kinematics/modern_robotics_ch07.py
+python ch07_closed_chain_kinematics/modern_robotics_ch07_torch.py
 python ch07_closed_chain_kinematics/compared_mr2pin.py
 python ch07_closed_chain_kinematics/compared_mr2mujoco.py
 ```

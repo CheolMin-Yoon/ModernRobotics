@@ -19,10 +19,18 @@ PoE(Product of Exponentials) 기반 순운동학
 | 파일 | 설명 |
 |------|------|
 | `modern_robotics_ch04.py` | UR5 FK 구현 |
+| `modern_robotics_ch04_torch.py` | PyTorch 버전 (autograd FK 미분 지원) |
 | `modern_robotics_ch04_ur5e.py` | UR5e FK (params/ur5e.py 파라미터 사용) |
 | `modern_robotics_ch04.ipynb` | 노트북 |
 | `compared_mr2pin.py` | Pinocchio (UR5 URDF) 비교 |
 | `compared_mr2mujoco.py` | MuJoCo (UR5e scene) 비교 |
+
+## PyTorch 버전
+
+`modern_robotics_ch04_torch.py` — PoE FK를 PyTorch로 구현.
+
+- autograd로 FK 위치의 θ에 대한 기울기 (∂p/∂θ) 자동 계산
+- Body/Space FK 모두 numpy 원본과 교차 검증 완료
 
 ## 검증
 
@@ -33,6 +41,7 @@ PoE(Product of Exponentials) 기반 순운동학
 ```bash
 conda activate mr
 python ch04_forward_kinematics/modern_robotics_ch04.py
+python ch04_forward_kinematics/modern_robotics_ch04_torch.py
 python ch04_forward_kinematics/compared_mr2pin.py
 python ch04_forward_kinematics/compared_mr2mujoco.py
 ```
