@@ -11,7 +11,7 @@ ch03_rigid_body_motion/         # SO(3), SE(3), exp/log, Adjoint, 스크류
 ch04_forward_kinematics/        # PoE 기반 순운동학 (UR5, UR5e)
 ch05_velocity_kinematics/       # 물체/공간 자코비안 (UR5e)
 ch06_inverse_kinematics/        # 수치 IK (Newton-Raphson)
-ch07_closed_chain_kinematics/   # 폐연쇄 기구학, Cassie 로봇 분석
+ch07_closed_chain_kinematics/   # 폐연쇄 기구학, 파지 해석
 ch08_dynamics/                  # RNEA, 질량 행렬, 중력/코리올리 토크 (UR5e)
 kinematics_pick_and_place/      # ch02~08 통합 Pick & Place 시뮬레이션
 params/                         # UR5e 기구학/동역학 파라미터 공통 모듈
@@ -28,8 +28,8 @@ urdf_files_dataset/             # URDF 파일 모음 (git clone, .gitignore)
 | ch03 | SO(3)/SE(3), exp/log, Adjoint | ✓ Pinocchio PASS |
 | ch04 | PoE 순운동학 | ✓ Pinocchio, MuJoCo PASS |
 | ch05 | 물체/공간 자코비안 | ✓ Pinocchio, MuJoCo PASS |
-| ch06 | 수치 역기구학 | - |
-| ch07 | 폐연쇄 기구학, Cassie | - |
+| ch06 | 수치 역기구학 | ✓ Pinocchio, MuJoCo PASS |
+| ch07 | 폐연쇄 기구학, 파지 해석 | ✓ Pinocchio, 수학적 검증 PASS |
 | ch08 | RNEA, 질량 행렬, 동역학 | ✗ FAIL (분석 중, `ch08_dynamics/FAIL_analysis.md`) |
 
 ## 비교 검증 체계
@@ -55,7 +55,7 @@ urdf_files_dataset/             # URDF 파일 모음 (git clone, .gitignore)
 |------|------|------|
 | UR5 | ch04~ch05 기구학 | mm |
 | UR5e | ch05~ch08, pick & place | m (SI) |
-| Cassie | ch07 폐연쇄 | m |
+| Cassie | ch07 폐연쇄 (예정) | m |
 
 ## 환경 설정
 
@@ -89,6 +89,10 @@ python ch04_forward_kinematics/compared_mr2pin.py
 python ch04_forward_kinematics/compared_mr2mujoco.py
 python ch05_velocity_kinematics/compared_mr2pin.py
 python ch05_velocity_kinematics/compared_mr2mujoco.py
+python ch06_inverse_kinematics/compared_mr2pin.py
+python ch06_inverse_kinematics/compared_mr2mujoco.py
+python ch07_closed_chain_kinematics/compared_mr2pin.py
+python ch07_closed_chain_kinematics/compared_mr2mujoco.py
 python ch08_dynamics/compared_mr2pin.py
 python ch08_dynamics/compared_mr2mujoco.py
 
@@ -96,8 +100,3 @@ python ch08_dynamics/compared_mr2mujoco.py
 python kinematics_pick_and_place/mr_pick_and_place.py
 python kinematics_pick_and_place/mujoco_pick_and_place.py
 python kinematics_pick_and_place/pin_pick_and_place.py
-
-# Cassie 폐연쇄 분석
-python ch07_closed_chain_kinematics/cassie_test.py
-python ch07_closed_chain_kinematics/cassie_test.py --view
-```
