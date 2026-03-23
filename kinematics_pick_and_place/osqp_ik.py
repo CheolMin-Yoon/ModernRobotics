@@ -37,7 +37,8 @@ from params.ur5e import (
 def osqp_ik(Blist_vec, M, T_sd, thetalist0,
                   use_mass_matrix=True,
                   ew=1e-3, ev=1e-3, max_iter=100,
-                  alpha=1.0, dt=0.1):
+                  alpha=1.0, dt=0.1,
+                  joint_limits=None):
     """라그랑주 승수 기반 역기구학 (OSQP QP solver)
 
     매 반복:
@@ -62,6 +63,7 @@ def osqp_ik(Blist_vec, M, T_sd, thetalist0,
         max_iter:        최대 반복 횟수
         alpha:           스텝 크기 (0 < α ≤ 1)
         dt:              속도 제한 시간 스텝 [s]
+        joint_limits:    (q_lower, q_upper, dq_max) 튜플. None이면 params.ur5e 기본값 사용
 
     Returns:
         thetalist: 수렴된 관절각 (n,)
@@ -69,6 +71,11 @@ def osqp_ik(Blist_vec, M, T_sd, thetalist0,
     """
     thetalist = np.array(thetalist0, dtype=float)
     n = len(thetalist)
+
+    if joint_limits is not None:
+        _q_lower, _q_upper, _dq_max = joint_limits
+    else:
+        _q_lower, _q_upper, _dq_max = q_lower, q_upper, dq_max
     Blist_se3 = [Vec2se3(B) for B in Blist_vec]
 
     for it in range(max_iter):
@@ -101,9 +108,9 @@ def osqp_ik(Blist_vec, M, T_sd, thetalist0,
         A = np.vstack([J_b, I_n])
 
         # 부등식 경계: 위치 제한과 속도 제한의 교집합
-        dq_pos_lower = q_lower - thetalist   # 위치 하한까지 남은 여유
-        dq_pos_upper = q_upper - thetalist   # 위치 상한까지 남은 여유
-        dq_vel = dq_max * dt                 # 속도 제한에 의한 최대 변위
+        dq_pos_lower = _q_lower - thetalist   # 위치 하한까지 남은 여유
+        dq_pos_upper = _q_upper - thetalist   # 위치 상한까지 남은 여유
+        dq_vel = _dq_max * dt                 # 속도 제한에 의한 최대 변위
 
         box_lower = np.maximum(dq_pos_lower, -dq_vel)
         box_upper = np.minimum(dq_pos_upper,  dq_vel)

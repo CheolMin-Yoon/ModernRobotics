@@ -2,6 +2,7 @@
 urdf_files_dataset/
 mujoco_menagerie/
 mujoco-robotics-usage
+6dof_ws
 
 # Python
 __pycache__/
