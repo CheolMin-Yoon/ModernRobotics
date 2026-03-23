@@ -1,6 +1,7 @@
 # 외부 데이터셋 (git clone으로 별도 관리)
 urdf_files_dataset/
 mujoco_menagerie/
+mujoco-robotics-usage
 
 # Python
 __pycache__/
