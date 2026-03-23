@@ -103,78 +103,115 @@ inertia = [
 ]
 
 # ============================================================
-# Mlist & Glist: MR 교재 방식
-# 각 링크 프레임: z축 = w_i (공간꼴 스크류 축 방향), 위치 = q_i
-# → A_i = [0,0,1,0,0,0] 이 되어 Slist와 일관성 유지
+# Mlist & Glist: Pinocchio URDF 파싱 기반
+# Pinocchio의 조인트 프레임을 MR 링크 프레임으로 사용하여
+# MR RNEA == Pinocchio RNEA 일치를 보장한다.
+# (기존 _frame_from_z 방식은 URDF→MR 프레임 변환 오류가 있었음)
 # ============================================================
-def _rpy2R(r, p, y):
-    """URDF rpy → 회전행렬 (extrinsic XYZ = Rz@Ry@Rx)"""
-    return MatrixExp3([0, 0, 1], y) @ MatrixExp3([0, 1, 0], p) @ MatrixExp3([1, 0, 0], r)
+try:
+    import pinocchio as pin
 
-def _frame_from_z(z_axis):
-    """z축 방향으로부터 직교 프레임 R 생성"""
-    z = np.array(z_axis, dtype=float)
-    z = z / np.linalg.norm(z)
-    if abs(z[0]) < 0.9:
-        x = np.cross(z, [1, 0, 0])
-    else:
-        x = np.cross(z, [0, 1, 0])
-    x = x / np.linalg.norm(x)
-    y = np.cross(z, x)
-    return np.column_stack([x, y, z])
+    _pin_model = pin.buildModelFromUrdf(
+        os.path.join(os.path.dirname(__file__), '..',
+            'urdf_files_dataset/urdf_files/ros-industrial/xacro_generated/'
+            'universal_robots/ur_description/urdf/ur5e.urdf'))
+    _pin_data = _pin_model.createData()
 
-# URDF 조인트 프레임 (rpy 누적)
-_Tj = [np.eye(4)]
-_Tj.append(_Tj[0] @ Rp2Trans(_rpy2R(0, 0, 0),                     [0,    0,   H1]))
-_Tj.append(_Tj[1] @ Rp2Trans(_rpy2R(np.pi/2, 0, 0),               [0,    0,   0 ]))
-_Tj.append(_Tj[2] @ Rp2Trans(_rpy2R(0, 0, 0),                     [-L1,  0,   0 ]))
-_Tj.append(_Tj[3] @ Rp2Trans(_rpy2R(0, 0, 0),                     [-L2,  0,   W1]))
-_Tj.append(_Tj[4] @ Rp2Trans(_rpy2R(np.pi/2, 0, 0),               [0,   -W2,  0 ]))
-_Tj.append(_Tj[5] @ Rp2Trans(_rpy2R(np.pi/2, np.pi, np.pi),       [0,    W2,  0 ]))
-_Tj.append(_Tj[6] @ Rp2Trans(_rpy2R(0, -np.pi/2, -np.pi/2),       [0,    0,   0 ]))
+    _q0 = np.zeros(_pin_model.nq)
+    pin.forwardKinematics(_pin_model, _pin_data, _q0)
+    pin.updateFramePlacements(_pin_model, _pin_data)
 
-# MR 링크 프레임: z축 = w_i, 위치 = q_i
-_ws = [w1, w2, w3, w4, w5, w6]
-_qs = [q1, q2, q3, q4, q5, q6]
-_T0 = [np.eye(4)]  # base
-for i in range(6):
-    _T0.append(Rp2Trans(_frame_from_z(_ws[i]), _qs[i]))
-_T0.append(M_e)  # EE
+    _tool_fid = _pin_model.getFrameId('tool0')
 
-# ── Mlist: M_{i,i+1} = T_{0,i}^{-1} @ T_{0,i+1} ──
-M_01 = TransInv(_T0[0]) @ _T0[1]
-M_12 = TransInv(_T0[1]) @ _T0[2]
-M_23 = TransInv(_T0[2]) @ _T0[3]
-M_34 = TransInv(_T0[3]) @ _T0[4]
-M_45 = TransInv(_T0[4]) @ _T0[5]
-M_56 = TransInv(_T0[5]) @ _T0[6]
-M_6e = TransInv(_T0[6]) @ _T0[7]
+    # ── T_{0,i}: Pinocchio joint placements at zero config ──
+    _T0 = [np.eye(4)]  # base
+    for _i in range(1, 7):
+        _oMi = _pin_data.oMi[_i]
+        _T = np.eye(4)
+        _T[:3, :3] = _oMi.rotation
+        _T[:3, 3] = _oMi.translation
+        _T0.append(_T)
+    # EE (tool0)
+    _T_ee = np.eye(4)
+    _T_ee[:3, :3] = _pin_data.oMf[_tool_fid].rotation
+    _T_ee[:3, 3] = _pin_data.oMf[_tool_fid].translation
+    _T0.append(_T_ee)
 
-Mlist = [M_01, M_12, M_23, M_34, M_45, M_56, M_6e]
+    # ── M_e 재정의 (Pinocchio tool0 기준) ──
+    M_e = _T_ee.copy()
 
-# ── Glist: MR 링크 프레임 기준 6x6 공간 관성 (평행축 정리) ──
-# URDF 프레임 → MR 프레임 회전 적용 후, CoM 오프셋으로 평행축 정리
-Glist = []
-for i in range(6):
-    R_mr = _frame_from_z(_ws[i])       # MR 프레임 방향
-    R_urdf = _Tj[i + 1][:3, :3]       # URDF 프레임 방향
-    R_change = R_mr.T @ R_urdf         # URDF → MR 회전
+    # ── Slist: Pinocchio 공간꼴 자코비안에서 추출 ──
+    _J_pin = pin.computeFrameJacobian(_pin_model, _pin_data, _q0, _tool_fid, pin.WORLD)
+    Slist_space_vec = []
+    for _i in range(6):
+        _col = _J_pin[:, _i]
+        # Pinocchio [v; w] → MR [w; v]
+        Slist_space_vec.append(np.concatenate([_col[3:], _col[:3]]))
+    Slist_space = [Vec2se3(S) for S in Slist_space_vec]
 
-    # 관성 텐서: MR 프레임 기준
-    I_urdf = np.diag(inertia[i])
-    I_mr = R_change @ I_urdf @ R_change.T
+    # ── Blist: 물체꼴 스크류 축 ──
+    _M_e_inv = TransInv(M_e)
+    _Ad_Me_inv = Adjoint(_M_e_inv)
+    Blist_body_vec = [_Ad_Me_inv @ S for S in Slist_space_vec]
+    Blist_body = [Vec2se3(B) for B in Blist_body_vec]
 
-    # CoM: MR 프레임 기준
-    com_mr = R_change @ com[i]
+    # ── Mlist: M_{i,i+1} = T_{0,i}^{-1} @ T_{0,i+1} ──
+    Mlist = [TransInv(_T0[_i]) @ _T0[_i + 1] for _i in range(7)]
 
-    # 평행축 정리
-    mi = mass[i]
-    p = com_mr
-    p_skew = Vec2so3(p)
-    I_joint = I_mr + mi * (np.dot(p, p) * np.eye(3) - np.outer(p, p))
-    G = np.block([[I_joint,        mi * p_skew],
-                  [mi * p_skew.T,  mi * np.eye(3)]])
-    Glist.append(G)
+    # ── Glist: Pinocchio 관성 → MR 6×6 공간 관성 (조인트 프레임 원점 기준) ──
+    Glist = []
+    for _i in range(6):
+        _inertia = _pin_model.inertias[_i + 1]
+        _mi = _inertia.mass
+        _lever = _inertia.lever      # CoM in joint frame
+        _I_com = _inertia.inertia    # inertia at CoM, joint frame axes
+
+        # 평행축 정리: I_origin = I_com + m*(|p|²I - p⊗p)
+        _p = _lever
+        _I_origin = _I_com + _mi * (np.dot(_p, _p) * np.eye(3) - np.outer(_p, _p))
+        _p_skew = Vec2so3(_p)
+        _G = np.block([[_I_origin,       _mi * _p_skew],
+                       [_mi * _p_skew.T, _mi * np.eye(3)]])
+        Glist.append(_G)
+
+    # cleanup
+    del _pin_model, _pin_data, _q0, _tool_fid, _T0, _T_ee, _J_pin
+    del _M_e_inv, _Ad_Me_inv, _oMi, _T, _col, _inertia, _mi, _lever, _I_com, _p, _I_origin, _p_skew, _G, _i
+
+except ImportError:
+    # Pinocchio가 없으면 기존 수동 계산 방식 사용 (정확도 낮음)
+    import warnings
+    warnings.warn("Pinocchio not found. Using manual URDF params (may have frame conversion errors).")
+
+    def _rpy2R(r, p, y):
+        return MatrixExp3([0, 0, 1], y) @ MatrixExp3([0, 1, 0], p) @ MatrixExp3([1, 0, 0], r)
+
+    def _frame_from_z(z_axis):
+        z = np.array(z_axis, dtype=float)
+        z = z / np.linalg.norm(z)
+        if abs(z[0]) < 0.9:
+            x = np.cross(z, [1, 0, 0])
+        else:
+            x = np.cross(z, [0, 1, 0])
+        x = x / np.linalg.norm(x)
+        y = np.cross(z, x)
+        return np.column_stack([x, y, z])
+
+    _ws = [w1, w2, w3, w4, w5, w6]
+    _qs = [q1, q2, q3, q4, q5, q6]
+    _T0 = [np.eye(4)]
+    for i in range(6):
+        _T0.append(Rp2Trans(_frame_from_z(_ws[i]), _qs[i]))
+    _T0.append(M_e)
+
+    Mlist = [TransInv(_T0[i]) @ _T0[i + 1] for i in range(7)]
+
+    Glist = []
+    for i in range(6):
+        mi = mass[i]
+        G = np.block([[np.diag(inertia[i]), np.zeros((3, 3))],
+                      [np.zeros((3, 3)),    mi * np.eye(3)]])
+        Glist.append(G)
 
 # ============================================================
 # 관절 제한 (URDF <limit> 태그 기준)

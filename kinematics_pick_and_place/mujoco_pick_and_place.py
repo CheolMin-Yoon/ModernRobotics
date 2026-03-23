@@ -24,6 +24,7 @@ from matplotlib.gridspec import GridSpec
 import threading
 
 from config import *
+from sim_common import MujocoSim, interp_joint_traj
 from grasp_analysis import GraspAnalyzer
 
 np.set_printoptions(precision=4, suppress=True)
@@ -66,65 +67,8 @@ def trim_scale(dq, th):
 #  MuJoCo 헬퍼
 # ═══════════════════════════════════════════════════════
 
-class MujocoEnv:
-    """robot_hand scene을 감싸는 최소 래퍼"""
-
-    def __init__(self):
-        self.model = mujoco.MjModel.from_xml_path(SCENE_XML)
-        self.data = mujoco.MjData(self.model)
-
-        # UR5e 관절 인덱스
-        self.arm_jnt_ids = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, n)
-                            for n in UR5E_JOINT_NAMES]
-        self.arm_qpos_ids = np.array([self.model.jnt_qposadr[j] for j in self.arm_jnt_ids])
-        self.arm_dof_ids = np.array([self.model.jnt_dofadr[j] for j in self.arm_jnt_ids])
-
-        # 액추에이터 인덱스
-        self.arm_act_ids = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, n)
-                            for n in UR5E_ACT_NAMES]
-        self.grip_act_ids = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, n)
-                             for n in GRIPPER_ACT_NAMES]
-
-        # Body IDs
-        self.ee_body_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, EE_BODY)
-        self.obj_body_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, OBJ_BODY)
-
-        # home keyframe
-        self.key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, "home")
-
-    def reset(self):
-        mujoco.mj_resetDataKeyframe(self.model, self.data, self.key_id)
-        mujoco.mj_forward(self.model, self.data)
-
-    def get_arm_q(self):
-        return self.data.qpos[self.arm_qpos_ids].copy()
-
-    def set_arm_q(self, q):
-        self.data.qpos[self.arm_qpos_ids] = q
-
-    def forward(self, q=None):
-        if q is not None:
-            self.set_arm_q(q)
-        mujoco.mj_forward(self.model, self.data)
-
-    def get_ee_pos(self):
-        return self.data.xpos[self.ee_body_id].copy()
-
-    def get_ee_rot(self):
-        return self.data.xmat[self.ee_body_id].reshape(3, 3).copy()
-
-    def get_obj_pos(self):
-        return self.data.xpos[self.obj_body_id].copy()
-
-    def get_arm_jacobian(self):
-        """EE body의 (6×nv) 자코비안 → arm dof만 추출 → (6×6)"""
-        jacp = np.zeros((3, self.model.nv))
-        jacr = np.zeros((3, self.model.nv))
-        mujoco.mj_jacBody(self.model, self.data, jacp, jacr, self.ee_body_id)
-        J = np.vstack([jacp[:, self.arm_dof_ids],
-                       jacr[:, self.arm_dof_ids]])
-        return J  # (6×6)
-
+class MujocoEnv(MujocoSim):
+    """MujocoSim + MuJoCo 자코비안 기반 IK"""
 
     # ── IK: damped least squares ──
     def solve_ik(self, p_target, R_target, q_init,
@@ -173,26 +117,8 @@ class MujocoEnv:
 
 
 # ═══════════════════════════════════════════════════════
-#  궤적 생성: 관절 공간 등속 보간
+#  접촉점 시각화 헬퍼
 # ═══════════════════════════════════════════════════════
-
-def interp_joint_traj(waypoints, vel=TRAJ_VEL, hz=int(1/SIM_DT)):
-    """
-    waypoints: list of (6,) 관절각
-    등속 보간 → (N, 6) 궤적
-    """
-    waypoints = np.array(waypoints)
-    segments = []
-    for i in range(len(waypoints) - 1):
-        q0, q1 = waypoints[i], waypoints[i+1]
-        dist = np.max(np.abs(q1 - q0))
-        duration = max(dist / vel, 0.5)  # 최소 0.5초
-        n_steps = max(int(duration * hz), 2)
-        seg = np.linspace(q0, q1, n_steps)
-        segments.append(seg[:-1])  # 마지막 점은 다음 세그먼트 시작
-    segments.append(waypoints[-1:])
-    return np.vstack(segments)
-
 
 def get_contact_geoms(model, data, max_contacts=20):
     """
@@ -254,10 +180,10 @@ def get_contact_geoms(model, data, max_contacts=20):
 #  실시간 접촉력 그래프
 # ═══════════════════════════════════════════════════════
 
-FINGER_LABELS = ["Center", "Left", "Right"]
-FINGER_COLORS = ["#e74c3c", "#2ecc71", "#3498db"]
-FINGERTIP_GEOM_NAMES = ["center_fingertip_geom", "left_fingertip_geom", "right_fingertip_geom"]
-PLOT_WINDOW = 500  # 표시할 최근 샘플 수
+from sim_common import (
+    FINGER_LABELS, FINGER_COLORS, FINGERTIP_GEOM_NAMES, PLOT_WINDOW,
+)
+
 
 class ContactPlotter:
     """실시간 손가락별 접촉력 + 그래스프 분석 그래프"""
